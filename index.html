@@ -1,0 +1,201 @@
+<html lang="en">
+    <head>
+      <meta charset="utf-8">
+      <title>Opt-out checker</title>
+      <style>
+        #container {
+            width: 700px;
+            margin: 3em auto;
+        }
+        table {
+            margin-bottom: 1em;
+        }
+        .tableLabel {
+            font-weight: bold;
+            padding-right: 0.5em;
+        }
+        td {
+            text-align: left;
+            vertical-align: top;
+        }
+        hr {
+            border: none;
+            height: 0.5px;
+            background: #333;
+        }
+        #inputForm {
+            margin-top: 16px;
+            margin-bottom: 24px;
+        }
+        #output {
+            margin-top: 16px;
+        }
+        .svg-icon {
+            display: inline-flex;
+            align-self: center;
+            top: .125em;
+            position: relative;
+        }
+        .svg svg-icon {
+            height: 1em;
+            width: 1em;
+        }
+        #cases {
+            margin-top: 1em;
+        }
+        #optoutText {
+            margin-top: 2em;
+        }
+      </style>
+    </head>
+    <body>
+        <div id="container">
+            <h1>Opt-out checker</h1>
+            <p>Faster and prettier* than the UPC's own.</p>
+            <hr>
+            <form id="inputForm">
+                <label for="docNo">Publication No.</label>
+                <input type="text" id="docNo">
+                <input type="submit">
+            </form>
+            <div id="output"></div>
+        </div>
+    </body>
+    <script>
+        const EP_FUNCTION_KEY = 'oL-l1Qz-C2fAhPZn838hAYL-pcNTvHvp4ODac8cRMdz-AzFu9tbR_g%3D%3D'
+        const OO_FUNCTION_KEY ='6vDizeUDPkMvOHdPOQSnTf9R5X6--T8tAytqHCleAFuJAzFuW5jQ2w%3D%3D'
+
+        let inputForm = document.getElementById("inputForm");
+        inputForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            let docNo = inputForm.elements["docNo"].value;
+            document.getElementById("output").innerHTML = ""
+
+            fetch(`https://upc.azurewebsites.net/api/epdata?code=${EP_FUNCTION_KEY}&docNo=${docNo}`)
+            .then(r => r.json())
+            .then(d => {
+                const epData = document.createElement("table");
+
+                // const pubNoRow = epData.insertRow();
+                // const pubNoLabel = pubNoRow.insertCell();
+                // pubNoLabel.classList.add("tableLabel");
+                // pubNoLabel.textContent = "Publication No.";
+                // const pubNo = pubNoRow.insertCell();
+                // pubNo.textContent = d["publication_no"];
+
+                // const appNoRow = epData.insertRow();
+                // const appNoLabel = appNoRow.insertCell();
+                // appNoLabel.classList.add("tableLabel");
+                // appNoLabel.textContent = "Application No.";
+                // const appNo = appNoRow.insertCell();
+                // appNo.textContent = d["application_no"];
+
+                const titleRow = epData.insertRow();
+                const titleLabel = titleRow.insertCell();
+                titleLabel.classList.add("tableLabel");
+                titleLabel.textContent = "Title";
+                const title = titleRow.insertCell();
+                title.textContent = d["title"];
+
+                const applicantsRow = epData.insertRow();
+                const applicantsLabel = applicantsRow.insertCell();
+                applicantsLabel.classList.add("tableLabel");
+                applicantsLabel.textContent = "Applicant(s)";
+                const applicants = applicantsRow.insertCell();
+                d["applicants"].forEach((a) => {
+                    applicants.innerHTML += `${a["name"]} <br>`;
+                });
+               
+                const linkRow = epData.insertRow();
+                const eplink = linkRow.insertCell();
+                eplink.innerHTML = `<a href="https://register.epo.org/application?number=${d["application_no"]}">Link to EP register <div class="svg-icon"><?xml version="1.0" ?><svg fill="none" height="1em" viewBox="0 0 24 24" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M10 6H6C4.89543 6 4 6.89543 4 8V18C4 19.1046 4.89543 20 6 20H16C17.1046 20 18 19.1046 18 18V14M14 4H20M20 4V10M20 4L10 14" stroke="#4A5568" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg></div></a><br>`;
+                eplink.colSpan = "2";
+
+                document.getElementById("output").appendChild(epData);
+            })
+            .then(() => {
+                fetch(`https://upc.azurewebsites.net/api/optoutcases?code=${OO_FUNCTION_KEY}&docNo=${docNo}`)
+                .then((r) => {
+                    if (r.status == 500){
+                        return r.status;
+                    } else {
+                        return r.json();
+                    }
+                })
+                .then((d) => {
+                    if (d.length > 0) {
+                        const optoutText = document.createElement("div")
+                        optoutText.textContent = `Opt-out cases found on the CMS for ${docNo}:`;
+                        optoutText.id = "optoutText";
+                        document.getElementById("output").appendChild(optoutText);
+
+                        const cases = document.createElement("div");
+                        cases.id = "cases";
+                        document.getElementById("output").appendChild(cases);
+
+                        d.forEach((e) => {
+                            const caseElement = document.createElement("table");
+
+                            const typeRow = caseElement.insertRow();
+
+                            const typeLabel = typeRow.insertCell();
+                            typeLabel.classList.add("tableLabel");
+                            typeLabel.textContent = "Type";
+
+                            const type = typeRow.insertCell();
+                            type.textContent = e["type"];
+                        
+                            const dateRow = caseElement.insertRow();
+
+                            const dateLabel = dateRow.insertCell();
+                            dateLabel.classList.add("tableLabel");
+                            dateLabel.textContent = "Receipt date";
+
+                            const date = dateRow.insertCell();
+                            date.textContent = e["receiptDate"];
+                            
+                            const caseNoRow = caseElement.insertRow();
+
+                            const caseNoLabel = caseNoRow.insertCell();
+                            caseNoLabel.classList.add("tableLabel");
+                            caseNoLabel.textContent = "Case No.";
+
+                            const caseNo = caseNoRow.insertCell();
+                            caseNo.textContent = e["fullNumber"];
+                        
+
+                            const filerRow = caseElement.insertRow();
+
+                            const filerLabel = filerRow.insertCell();
+                            filerLabel.classList.add("tableLabel");
+                            filerLabel.textContent = "Filed by";
+
+                            const filerCell = filerRow.insertCell();
+                            filerCell.innerHTML = `
+                                ${e["parties"][0]["name"]} ${e["parties"][0]["surname"]} </br>
+                                ${e["parties"][0]["companyName"]}
+                            `;
+
+                            document.getElementById("cases").appendChild(caseElement);
+                        });
+                } else if (d == 500) {
+                    const optoutText = document.createElement("div")
+                    optoutText.textContent = `There was a problem with the CMS API, try again later.`;
+                    optoutText.id = "optoutText";
+                    document.getElementById("output").appendChild(optoutText);
+                } else {
+                    const optoutText = document.createElement("div")
+                    optoutText.textContent = `No opt-out cases found on the CMS for ${docNo}.`;
+                    optoutText.id = "optoutText";
+                    document.getElementById("output").appendChild(optoutText);
+                }
+                });
+            });
+        });
+    </script>
+</html>
+<!-- 
+EP3891419 
+EP4368298
+EP3295663
+-->
